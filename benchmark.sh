@@ -13,7 +13,7 @@ fi
 
 BASE_URL="${LLAMA_SERVER_URL:-http://localhost:8000}"
 API_URL="${BASE_URL}/v1/chat/completions"
-MODEL="${LLAMA_MODEL:-/models/GLM-4.7-Flash-UD-Q8_K_XL.gguf}"
+MODEL="${LLAMA_MODEL:-GLM-4.7-Flash-UD-Q8_K_XL.gguf}"
 API_KEY="${LLAMA_ARG_API_KEY:-}"
 
 echo "=========================================="
@@ -27,13 +27,20 @@ echo ""
 echo "Test 1: Single Request Speed"
 echo "-------------------------------------------"
 START=$(date +%s.%N)
-CURL_OPTS="-sS -H \"Content-Type: application/json\""
+
+# Build curl command with or without auth
 if [ -n "$API_KEY" ]; then
-  CURL_OPTS="$CURL_OPTS -H \"Authorization: Bearer $API_KEY\""
+  RESPONSE=$(curl -sS \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_KEY" \
+    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Count to 100\"}],\"max_tokens\":200}" \
+    "$API_URL")
+else
+  RESPONSE=$(curl -sS \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Count to 100\"}],\"max_tokens\":200}" \
+    "$API_URL")
 fi
-RESPONSE=$(eval curl $CURL_OPTS \
-  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Count to 100\"}],\"max_tokens\":200}" \
-  "$API_URL")
 END=$(date +%s.%N)
 ELAPSED=$(awk "BEGIN {printf \"%.2f\", $END - $START}")
 echo "Time: ${ELAPSED}s"
@@ -57,9 +64,18 @@ LONG_PROMPT="Explain quantum computing. "$(
     echo -n "This is filler text to increase context size. "
   done
 )
-eval curl $CURL_OPTS \
-  -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"${LONG_PROMPT}\"}],\"max_tokens\":500}" \
-  "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
+if [ -n "$API_KEY" ]; then
+  curl -sS \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_KEY" \
+    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"${LONG_PROMPT}\"}],\"max_tokens\":500}" \
+    "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
+else
+  curl -sS \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"${LONG_PROMPT}\"}],\"max_tokens\":500}" \
+    "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
+fi
 END=$(date +%s.%N)
 ELAPSED=$(awk "BEGIN {printf \"%.2f\", $END - $START}")
 echo "Time: ${ELAPSED}s"
@@ -69,11 +85,22 @@ echo ""
 echo "Test 3: Concurrent Requests (4 parallel)"
 echo "-------------------------------------------"
 START=$(date +%s.%N)
-for i in {1..4}; do
-  eval curl $CURL_OPTS \
-    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello ${i}\"}],\"max_tokens\":50}" \
-    "$API_URL" &
-done
+if [ -n "$API_KEY" ]; then
+  for i in {1..4}; do
+    curl -sS \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $API_KEY" \
+      -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello ${i}\"}],\"max_tokens\":50}" \
+      "$API_URL" > /dev/null &
+  done
+else
+  for i in {1..4}; do
+    curl -sS \
+      -H "Content-Type: application/json" \
+      -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello ${i}\"}],\"max_tokens\":50}" \
+      "$API_URL" > /dev/null &
+  done
+fi
 wait
 END=$(date +%s.%N)
 ELAPSED=$(awk "BEGIN {printf \"%.2f\", $END - $START}")
@@ -84,11 +111,22 @@ echo ""
 echo "Test 4: Sequential Requests (5 requests)"
 echo "-------------------------------------------"
 START=$(date +%s.%N)
-for i in {1..5}; do
-  eval curl $CURL_OPTS \
-    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Generate a poem\"}],\"max_tokens\":100}" \
-    "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
-done
+if [ -n "$API_KEY" ]; then
+  for i in {1..5}; do
+    curl -sS \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $API_KEY" \
+      -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Generate a poem\"}],\"max_tokens\":100}" \
+      "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
+  done
+else
+  for i in {1..5}; do
+    curl -sS \
+      -H "Content-Type: application/json" \
+      -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Generate a poem\"}],\"max_tokens\":100}" \
+      "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
+  done
+fi
 END=$(date +%s.%N)
 ELAPSED=$(awk "BEGIN {printf \"%.2f\", $END - $START}")
 echo "Total Time: ${ELAPSED}s"
