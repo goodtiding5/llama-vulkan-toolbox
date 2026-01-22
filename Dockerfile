@@ -30,10 +30,6 @@ WORKDIR ${WORKSPACE_DIR}
 COPY scripts/ scripts/
 COPY .toolbox.env ./
 
-# Set up ubuntu user home directory
-RUN usermod -d ${WORKSPACE_DIR} ubuntu && \
-    rm -rf /home/ubuntu
-
 # Create /.dockerenv to pass container checks
 RUN touch /.dockerenv
 
