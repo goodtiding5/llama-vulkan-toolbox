@@ -30,11 +30,9 @@ WORKDIR ${WORKSPACE_DIR}
 COPY scripts/ scripts/
 COPY .toolbox.env ./
 
-# Create llama user and set up workspace
-RUN useradd -m -d ${WORKSPACE_DIR} -s /bin/bash llama && \
-    rm -rf /home/ubuntu && \
-    chown -R llama:llama ${WORKSPACE_DIR} && \
-    usermod -aG sudo llama || true
+# Set up ubuntu user home directory
+RUN usermod -d ${WORKSPACE_DIR} ubuntu && \
+    rm -rf /home/ubuntu
 
 # Create /.dockerenv to pass container checks
 RUN touch /.dockerenv
@@ -54,13 +52,12 @@ ARG WORKSPACE_DIR
 ENV DEBIAN_FRONTEND=noninteractive \
     LLAMA_HOME=/opt/llama
 
-# Create llama user with /workspace as home and remove default ubuntu user
-RUN useradd -m -d ${WORKSPACE_DIR} -s /bin/bash llama && \
-    rm -rf /home/ubuntu && \
-    chown -R llama:llama ${WORKSPACE_DIR}
+# Set up ubuntu user home directory
+RUN usermod -d ${WORKSPACE_DIR} ubuntu && \
+    rm -rf /home/ubuntu
 
 # Copy llama.cpp build from builder
-COPY --from=builder --chown=llama:llama ${LLAMA_HOME} ${LLAMA_HOME}
+COPY --from=builder --chown=ubuntu:ubuntu ${LLAMA_HOME} ${LLAMA_HOME}
 
 # Copy inference script
 COPY scripts/03-run-inference.sh ${WORKSPACE_DIR}/
@@ -79,10 +76,10 @@ ENV PATH=/opt/llama/bin:${PATH} \
     LLAMA_ARG_MODELS_DIR=/models
 
 # Create models directory and set ownership
-RUN mkdir -p /models && chown llama:llama /models
+RUN mkdir -p /models && chown ubuntu:ubuntu /models
 
 # Set user and working directory
-USER llama
+USER ubuntu
 WORKDIR ${WORKSPACE_DIR}
 
 # Volume for models (mount from host at runtime)
