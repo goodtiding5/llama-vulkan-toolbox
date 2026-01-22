@@ -5,9 +5,16 @@
 
 set -e
 
+# Source .env file if it exists
+if [ -f "$(dirname "$0")/.env" ]; then
+  # shellcheck disable=SC1090
+  source "$(dirname "$0")/.env"
+fi
+
 BASE_URL="${LLAMA_SERVER_URL:-http://localhost:8000}"
 API_URL="${BASE_URL}/v1/chat/completions"
-MODEL="${LLAMA_MODEL:-Qwen3-Coder-30B-A3B-Instruct-UD-Q8_K_XL}"
+MODEL="${LLAMA_MODEL:-/models/GLM-4.7-Flash-UD-Q8_K_XL.gguf}"
+API_KEY="${LLAMA_ARG_API_KEY:-}"
 
 echo "=========================================="
 echo "Llama.cpp Performance Benchmark"
@@ -20,7 +27,11 @@ echo ""
 echo "Test 1: Single Request Speed"
 echo "-------------------------------------------"
 START=$(date +%s.%N)
-RESPONSE=$(curl -sS -H "Content-Type: application/json" \
+CURL_OPTS="-sS -H \"Content-Type: application/json\""
+if [ -n "$API_KEY" ]; then
+  CURL_OPTS="$CURL_OPTS -H \"Authorization: Bearer $API_KEY\""
+fi
+RESPONSE=$(eval curl $CURL_OPTS \
   -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Count to 100\"}],\"max_tokens\":200}" \
   "$API_URL")
 END=$(date +%s.%N)
@@ -46,7 +57,7 @@ LONG_PROMPT="Explain quantum computing. "$(
     echo -n "This is filler text to increase context size. "
   done
 )
-curl -sS -H "Content-Type: application/json" \
+eval curl $CURL_OPTS \
   -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"${LONG_PROMPT}\"}],\"max_tokens\":500}" \
   "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
 END=$(date +%s.%N)
@@ -59,7 +70,7 @@ echo "Test 3: Concurrent Requests (4 parallel)"
 echo "-------------------------------------------"
 START=$(date +%s.%N)
 for i in {1..4}; do
-  curl -sS -H "Content-Type: application/json" \
+  eval curl $CURL_OPTS \
     -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Say hello ${i}\"}],\"max_tokens\":50}" \
     "$API_URL" &
 done
@@ -74,7 +85,7 @@ echo "Test 4: Sequential Requests (5 requests)"
 echo "-------------------------------------------"
 START=$(date +%s.%N)
 for i in {1..5}; do
-  curl -sS -H "Content-Type: application/json" \
+  eval curl $CURL_OPTS \
     -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"Generate a poem\"}],\"max_tokens\":100}" \
     "$API_URL" | jq -r '.choices[0].message.content' > /dev/null
 done
