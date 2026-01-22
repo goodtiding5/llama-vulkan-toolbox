@@ -74,7 +74,9 @@ RUN bash ./99-install-dependents.sh
 
 # Set up environment
 ENV PATH=/opt/llama/bin:${PATH} \
-    LD_LIBRARY_PATH=/opt/llama/lib:${LD_LIBRARY_PATH}
+    LD_LIBRARY_PATH=/opt/llama/lib:${LD_LIBRARY_PATH} \
+    HF_HOME=/models \
+    LLAMA_ARG_MODELS_DIR=/models
 
 # Create models directory and set ownership
 RUN mkdir -p /models && chown llama:llama /models
