@@ -1,0 +1,98 @@
+services:
+  llama:
+    image: openmtx/llama.cpp:vulkan-latest
+    build:
+      context: .
+      args:
+        - LLAMA_REL_TAG=latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${HOME}/.cache/llm/models:/models:Z
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    security_opt:
+      - seccomp=unconfined
+    privileged: true
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    shm_size: "64gb"
+    env_file:
+      - .env
+    environment:
+      - LLAMA_ARG_HOST=0.0.0.0
+      - LLAMA_ARG_PORT=8000
+
+      - HF_HOME=/models
+      - LLAMA_ARG_MODELS_DIR=/models
+      - LLAMA_ARG_MODEL=/models/GLM-4.7-Flash-UD-Q8_K_XL.gguf
+
+      # - LLAMA_ARG_MODEL=/models/DeepSeek-R1-Distill-Llama-8B-Q4_K_M.gguf
+      # - LLAMA_ARG_MODEL= #model path (default: models/$filename with filename from --hf-file or --model-url if set, otherwise models/7B/ggml-model-f16.gguf)
+      # - LLAMA_ARG_MODEL_URL= #model download url (default: unused)
+      # - LLAMA_ARG_HF_REPO= #Hugging Face model repository (default: unused)
+      # - LLAMA_ARG_HF_FILE= #Hugging Face model file (default: unused)
+      # - HF_TOKEN= #Hugging Face access token (default: value from HF_TOKEN environment variable)
+      # - HF_MODEL=
+      
+      # GPU & Memory Settings (Strix Halo 96GB VRAM)
+      - LLAMA_ARG_N_GPU_LAYERS=-1
+      - LLAMA_ARG_MAIN_GPU=0
+      - LLAMA_ARG_OP_OFFLOAD=on
+      
+      # Context Size (64K per slot - balanced)
+      - LLAMA_ARG_CTX_SIZE=65536
+      
+      # CPU Thread Settings (32 cores total)
+      - LLAMA_ARG_THREADS=24
+      - LLAMA_ARG_THREADS_BATCH=32
+      - LLAMA_ARG_THREADS_HTTP=4
+      
+      # Batch Settings (balanced throughput)
+      - LLAMA_ARG_BATCH=4096
+      - LLAMA_ARG_UBATCH=2048
+      
+      # Parallel Slots (concurrency)
+      - LLAMA_ARG_N_PARALLEL=4
+      
+      # KV Cache Settings (96GB VRAM - unlimited cache)
+      - LLAMA_ARG_CACHE_RAM=-1
+      - LLAMA_ARG_CACHE_TYPE_K=f16
+      - LLAMA_ARG_CACHE_TYPE_V=f16
+      - LLAMA_ARG_CACHE_REUSE=2048
+      - LLAMA_ARG_KV_UNIFIED=on
+      
+      # Performance Features
+      #  (turn this off for GLM model)
+      - LLAMA_ARG_FLASH_ATTN=off
+      - LLAMA_ARG_CONT_BATCHING=on
+      - LLAMA_ARG_CACHE_PROMPT=on
+
+      # Memory Optimizations
+      - LLAMA_ARG_MLOCK=on
+      - LLAMA_ARG_MMAP=on
+      - LLAMA_ARG_NUMA=distribute
+      
+      # Generate Settings
+      - LLAMA_ARG_N_PREDICT=4096
+      
+      # Logging
+      - LLAMA_LOG_COLORS=1
+      - LLAMA_ARG_NO_WEBUI=false
+    entrypoint: []
+    command: >
+      llama-server
+      --jinja
+      --fit on
+    healthcheck:
+      test: ["CMD-SHELL", "curl -H 'Authorization: Bearer $LLAMA_ARG_API_KEY' -f http://localhost:8000/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

@@ -1,0 +1,55 @@
+# Build artifacts
+/build
+/bin
+/lib
+/workspace/llama.cpp
+*.o
+*.so
+*.a
+
+# Temporary files
+*.tmp
+*.log
+*.tar.gz
+*.tgz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Models directory (too large for git)
+/models
+*.gguf
+*.bin
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test outputs
+validation-output.txt
+test-results/
+
+# Downloads and cache
+/cache
+/downloads
+.huggingface/
+
+# Distrobox container state
+.container_id
+container-state/
